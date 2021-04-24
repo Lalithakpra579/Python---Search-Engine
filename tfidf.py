@@ -8,9 +8,9 @@ from tqdm import tqdm
 
 dataset_dir = 'dataset'
 out_dir = 'output'
+data_files = list(map(os.path.basename, glob.glob(f"{dataset_dir}/*.txt")))
+indexed_files = list()
 final_index_file = f'{out_dir}/index.json'
-files = list(map(os.path.basename, glob.glob(f"{dataset_dir}/*")))
-index_files = list(map(os.path.basename, glob.glob(f"{out_dir}/*")))
 
 with open('stopwords.txt') as stopwords_file:
     stopwords = [w.lower().strip() for w in stopwords_file.readlines()]
@@ -39,7 +39,7 @@ def file_tf(fn: str) -> dict:
     tokens_set = set(tokens)
     tokens_len = len(tokens_set)
 
-    for t in tqdm(tokens_set, ascii=True, desc=f'Indexing: {fn}'):
+    for t in tqdm(tokens_set, desc=fn):
         if t:
             count = tokens.count(t)
             tf = float(count) / tokens_len
@@ -59,7 +59,7 @@ def get_index(fp: str) -> dict:
 
 def get_num_docs(t: str) -> list:
     rv = []
-    for index_fn in index_files:
+    for index_fn in indexed_files:
         index = get_index(index_fn)
         if t in index:
             rv.append({'file': index_fn, 'tf': index[t]})
@@ -69,22 +69,29 @@ def get_num_docs(t: str) -> list:
 
 def reindex():
     print("Reindexing dataset...")
-    for f in files:
+    old_files = glob.glob(f"{out_dir}/*")
+    for f in old_files:
+        os.remove(f)
+
+    for f in data_files:
         tf_map = file_tf(f)
         with open(f'{out_dir}/{f}.json', 'w') as outfile:
             outfile.write(json.dumps(tf_map, indent=2))
             print(f'Index created for: {f}', flush=True)
 
+    global indexed_files
+    indexed_files = list(map(os.path.basename, glob.glob(f"{out_dir}/*.txt.json")))
+
     all_tokens = set()
-    for f in all_tokens:
+    for f in indexed_files:
         index = get_index(f)
         all_tokens.update(index.keys())
 
     final_index = {}
 
-    for t in tqdm(all_tokens, ascii=True, desc=f'Calculating TF-IDF'):
+    for t in tqdm(all_tokens, desc=f'Calculating TF-IDF'):
         docs = get_num_docs(t)
-        idf = math.log(float(1 + len(index_files)) / (1 + len(docs)))
+        idf = math.log(float(1 + len(indexed_files)) / (1 + len(docs)))
         for d in docs:
             d['tfidf'] = d['tf'] * idf
 
@@ -99,14 +106,13 @@ def search(t: str):
     if not os.path.exists(final_index_file):
         print("Index file not found!")
         reindex()
-    else:
-        t = clean(t)
-        with open(final_index_file) as f:
-            index = json.load(f)
 
-        if t in index:
-            res = map(lambda x: f"{x['file']} - {x['tfidf']:.16f}", index[t])
-            for r in res:
-                print(r)
-        else:
-            print(f'{t}: Not found!')
+    t = clean(t)
+    with open(final_index_file) as f:
+        index = json.load(f)
+
+    if t in index:
+        for r in map(lambda x: f"{x['file'].replace('.json', '')} - {x['tfidf']:.16f}", index[t]):
+            print(r)
+    else:
+        print(f'{t}: Not found!')
