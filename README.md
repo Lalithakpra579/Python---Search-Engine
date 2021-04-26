@@ -21,8 +21,6 @@ $: python3 main.py -h
 #                            search the word
 #      -i, --index           index the dataset
 ```
-
-```shell
 $: python3 main.py -s king
 
 #  Andrew Lang___The Blue Fairy Book.txt - 0.0218087233081963
