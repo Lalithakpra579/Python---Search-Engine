@@ -101,7 +101,7 @@ def reindex():
         f.write(json.dumps(final_index, indent=2))
         print('Index updated...', flush=True)
 
-
+#search
 def search(t: str):
     if not os.path.exists(final_index_file):
         print("Index file not found!")
