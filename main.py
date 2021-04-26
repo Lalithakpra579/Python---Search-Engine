@@ -2,7 +2,6 @@ import argparse
 
 import tfidf
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--search', type=str, help='search the word')
